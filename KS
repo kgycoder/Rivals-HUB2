@@ -83,7 +83,7 @@ end
 -- AUTO-RELOAD SYSTEM
 -- ============================================
 
-local SCRIPT_URL = "https://raw.githubusercontent.com/kgycoder/Rivals/refs/heads/main/KS"
+local SCRIPT_URL = "https://raw.githubusercontent.com/kgycoder/Rivals-HUB2/refs/heads/main/KS"
 local BOOTSTRAP_CODE = [[
 repeat task.wait() until game:IsLoaded()
 task.wait(2)
