@@ -1,4 +1,4 @@
--- KS-Rivals Script Hub (Auto-Aim Visibility Logic Fixed)
+-- KS-Rivals Script Hub (Integrated Full Auto & Hub2 URL)
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -20,7 +20,7 @@ local AIM_LOCK_ENABLED = false
 local AUTO_AIM_ENABLED = false
 local NOTIFICATION_ENABLED = false
 local AUTO_MATCH_ENABLED = false
-local FULL_AUTO_ENABLED = false
+local FULL_AUTO_ENABLED = false -- 새 기능 추가
 local AUTO_AIM_MODE = "Silent"
 local AUTO_MATCH_MODE = "1v1"
 local AIM_LOCK_KEY = Enum.UserInputType.MouseButton2
@@ -38,7 +38,7 @@ local function saveConfig()
         AUTO_AIM_ENABLED = AUTO_AIM_ENABLED,
         NOTIFICATION_ENABLED = NOTIFICATION_ENABLED,
         AUTO_MATCH_ENABLED = AUTO_MATCH_ENABLED,
-        FULL_AUTO_ENABLED = FULL_AUTO_ENABLED,
+        FULL_AUTO_ENABLED = FULL_AUTO_ENABLED, -- 저장 항목 추가
         AUTO_AIM_MODE = AUTO_AIM_MODE,
         AUTO_MATCH_MODE = AUTO_MATCH_MODE,
         AIM_LOCK_KEY = tostring(AIM_LOCK_KEY),
@@ -67,7 +67,7 @@ if savedConfig then
     AUTO_AIM_ENABLED = savedConfig.AUTO_AIM_ENABLED or false
     NOTIFICATION_ENABLED = savedConfig.NOTIFICATION_ENABLED or false
     AUTO_MATCH_ENABLED = savedConfig.AUTO_MATCH_ENABLED or false
-    FULL_AUTO_ENABLED = savedConfig.FULL_AUTO_ENABLED or false
+    FULL_AUTO_ENABLED = savedConfig.FULL_AUTO_ENABLED or false -- 로드 항목 추가
     AUTO_AIM_MODE = savedConfig.AUTO_AIM_MODE or "Silent"
     AUTO_MATCH_MODE = savedConfig.AUTO_MATCH_MODE or "1v1"
     if savedConfig.AIM_LOCK_KEY then
@@ -80,7 +80,7 @@ if savedConfig then
 end
 
 -- ============================================
--- AUTO-RELOAD SYSTEM
+-- AUTO-RELOAD SYSTEM (Updated URL)
 -- ============================================
 
 local SCRIPT_URL = "https://raw.githubusercontent.com/kgycoder/Rivals-HUB2/refs/heads/main/KS"
@@ -106,7 +106,7 @@ LocalPlayer.OnTeleport:Connect(function(state)
 end)
 
 -- ============================================
--- NOTIFICATION SYSTEM (Design & Animation)
+-- NOTIFICATION SYSTEM (Design Preserved)
 -- ============================================
 
 for _, gui in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
@@ -174,15 +174,12 @@ local function isVisible(p)
     if not p.Character or not p.Character:FindFirstChild("Head") then return false end
     local char = p.Character
     local head = char.Head
-    
     local rayParams = RaycastParams.new()
     rayParams.FilterDescendantsInstances = {LocalPlayer.Character, char}
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    
     local origin = Camera.CFrame.Position
     local direction = (head.Position - origin)
     local ray = workspace:Raycast(origin, direction, rayParams)
-    
     return ray == nil
 end
 
@@ -233,7 +230,7 @@ TopBar.BackgroundTransparency = 1
 TopBar.Parent = MainFrame
 
 local Title = Instance.new("TextLabel")
-Title.Text = "KS-Rivals - Integrated Hub"
+Title.Text = "KS-Rivals HUB2 - Integrated"
 Title.Font = Enum.Font.Code
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 13
@@ -427,24 +424,6 @@ local function CreateToggle(name, parent, callback, configType, defaultValue)
     return setEnabled
 end
 
-local function CreateButton(name, parent, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 140, 0, 26)
-    btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    btn.Text = name
-    btn.Font = Enum.Font.Code
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 13
-    btn.BorderSizePixel = 0
-    btn.Parent = parent
-    local s = Instance.new("UIStroke")
-    s.Color = Color3.fromRGB(255, 255, 255)
-    s.Thickness = 1
-    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    s.Parent = btn
-    btn.MouseButton1Click:Connect(callback)
-end
-
 local AimList = Instance.new("UIListLayout")
 AimList.Padding = UDim.new(0, 4)
 AimList.Parent = AimPage
@@ -487,7 +466,7 @@ Players.PlayerAdded:Connect(setupPlayerTracking)
 for _, p in ipairs(Players:GetPlayers()) do setupPlayerTracking(p) end
 
 -- ============================================
--- AIM EXECUTION (Visibility Check Applied)
+-- AIM & FULL AUTO LOGIC
 -- ============================================
 
 local function updateAimLock()
@@ -519,16 +498,25 @@ UserInputService.InputEnded:Connect(function(i)
     end
 end)
 
--- AUTO CLICKER with Visibility Check
 RunService.RenderStepped:Connect(function()
+    -- Full Auto Logic (마우스 누르고 있을 때 자동 연사)
+    if FULL_AUTO_ENABLED and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) and not MainFrame.Visible then
+        local cur = tick()
+        if cur - lastClickTime >= CLICK_INTERVAL then
+            lastClickTime = cur
+            VirtualInputManager:SendMouseButtonEvent(Mouse.X, Mouse.Y, 0, true, game, 0)
+            task.wait(0.01)
+            VirtualInputManager:SendMouseButtonEvent(Mouse.X, Mouse.Y, 0, false, game, 0)
+        end
+        return -- Full Auto가 작동 중이면 아래 Auto Aim 클릭 로직은 건너뜀
+    end
+
+    -- Auto Aim Logic (조준 시 자동 클릭)
     if not AUTO_AIM_ENABLED or MainFrame.Visible then return end
     local targetFound = false
-    
     if AUTO_AIM_MODE == "Silent" then
         local t = getClosestPlayer()
-        if t and isVisible(t) then
-            targetFound = true
-        end
+        if t and isVisible(t) then targetFound = true end
     elseif AUTO_AIM_MODE == "Aim" then
         local target = Mouse.Target
         if target and target.Parent then
@@ -538,7 +526,6 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
-    
     if targetFound then
         local cur = tick()
         if cur - lastClickTime >= CLICK_INTERVAL then
@@ -551,10 +538,33 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ============================================
--- VISUALS & UI INITIALIZATION
+-- UI INITIALIZATION (Full Auto Button Added)
 -- ============================================
 
-local function updateESPStates()
+UIHandlers.UpdateSilentAim = CreateToggle("enabled (silent aim)", AimPage, function(v) SILENT_AIM_ENABLED = v end, nil, SILENT_AIM_ENABLED)
+UIHandlers.UpdateAimLock = CreateToggle("Aim Lock", AimPage, function(v) AIM_LOCK_ENABLED = v end, "Keybind", AIM_LOCK_ENABLED)
+UIHandlers.UpdateAutoAim = CreateToggle("Auto Aim", AimPage, function(v) 
+    AUTO_AIM_ENABLED = v 
+    if v then
+        if AUTO_AIM_MODE == "Silent" then UIHandlers.UpdateSilentAim(true) UIHandlers.UpdateAimLock(false)
+        else UIHandlers.UpdateSilentAim(false) UIHandlers.UpdateAimLock(true) end
+    end
+end, "AimMode", AUTO_AIM_ENABLED)
+
+-- Full Auto 토글 버튼 추가
+CreateToggle("full Auto", AimPage, function(v) FULL_AUTO_ENABLED = v end, nil, FULL_AUTO_ENABLED)
+
+UIHandlers.UpdateAutoMatch = CreateToggle("Auto Match", AimPage, function(v) 
+    AUTO_MATCH_ENABLED = v
+    if v then attemptJoinMatch() end
+end, "MatchMode", AUTO_MATCH_ENABLED)
+
+CreateToggle("enabled (esp)", VisualPage, function(v) ESP_ENABLED = v updateESPStates() end, nil, ESP_ENABLED)
+CreateToggle("HP bar", VisualPage, function(v) HP_BAR_ENABLED = v updateESPStates() end, nil, HP_BAR_ENABLED)
+CreateToggle("Notification", VisualPage, function(v) NOTIFICATION_ENABLED = v end, nil, NOTIFICATION_ENABLED)
+
+-- ESP & Dragging (디자인 유지)
+function updateESPStates()
     for _,p in pairs(Players:GetPlayers()) do
         local r = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
         if r then
@@ -564,7 +574,7 @@ local function updateESPStates()
     end
 end
 
-local function createESP(player)
+function createESP(player)
     if player == LocalPlayer then return end
     local function onChar(char)
         local root = char:WaitForChild("HumanoidRootPart", 5)
@@ -596,43 +606,6 @@ end
 for _, p in pairs(Players:GetPlayers()) do createESP(p) end
 Players.PlayerAdded:Connect(createESP)
 
-UIHandlers.UpdateSilentAim = CreateToggle("enabled (silent aim)", AimPage, function(v) SILENT_AIM_ENABLED = v end, nil, SILENT_AIM_ENABLED)
-UIHandlers.UpdateAimLock = CreateToggle("Aim Lock", AimPage, function(v) AIM_LOCK_ENABLED = v end, "Keybind", AIM_LOCK_ENABLED)
-UIHandlers.UpdateAutoAim = CreateToggle("Auto Aim", AimPage, function(v) 
-    AUTO_AIM_ENABLED = v 
-    if v then
-        if AUTO_AIM_MODE == "Silent" then UIHandlers.UpdateSilentAim(true) UIHandlers.UpdateAimLock(false)
-        else UIHandlers.UpdateSilentAim(false) UIHandlers.UpdateAimLock(true) end
-    end
-end, "AimMode", AUTO_AIM_ENABLED)
-
-UIHandlers.UpdateAutoMatch = CreateToggle("Auto Match", AimPage, function(v) 
-    AUTO_MATCH_ENABLED = v
-    if v then attemptJoinMatch() end
-end, "MatchMode", AUTO_MATCH_ENABLED)
-
-CreateToggle("Full Auto", AimPage, function(v) FULL_AUTO_ENABLED = v end, nil, FULL_AUTO_ENABLED)
-
-CreateToggle("enabled (esp)", VisualPage, function(v) ESP_ENABLED = v updateESPStates() end, nil, ESP_ENABLED)
-CreateToggle("HP bar", VisualPage, function(v) HP_BAR_ENABLED = v updateESPStates() end, nil, HP_BAR_ENABLED)
-CreateToggle("Notification", VisualPage, function(v) NOTIFICATION_ENABLED = v end, nil, NOTIFICATION_ENABLED)
-
-CreateButton("mesh wrapping", VisualPage, function()
-    local VM = workspace:FindFirstChild("ViewModels")
-    local FP = VM and VM:FindFirstChild("FirstPerson")
-    if FP then
-        for _, o in ipairs(FP:GetDescendants()) do 
-            if o:IsA("MeshPart") then 
-                o.Material, o.Color = Enum.Material.ForceField, Color3.new(0,0,0)
-                for _, f in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Left, Enum.NormalId.Right, Enum.NormalId.Front, Enum.NormalId.Back}) do
-                    local t = o:FindFirstChild("FixedTexture_"..f.Name) or Instance.new("Texture", o)
-                    t.Name, t.Texture, t.Face, t.Color3, t.StudsPerTileU, t.StudsPerTileV = "FixedTexture_"..f.Name, "rbxassetid://135989547473439", f, Color3.new(0,0,0), 0.1, 0.1
-                end
-            end
-        end
-    end
-end)
-
 local dragging, dragStart, startPos
 MainFrame.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true dragStart = input.Position startPos = MainFrame.Position end end)
 UserInputService.InputChanged:Connect(function(input) if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then local delta = input.Position - dragStart MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
@@ -641,6 +614,7 @@ local function ToggleUI() MainFrame.Visible = not MainFrame.Visible end
 CloseBtn.MouseButton1Click:Connect(ToggleUI)
 UserInputService.InputBegan:Connect(function(input, gpe) if not gpe and input.KeyCode == Enum.KeyCode.K then ToggleUI() end end)
 
+-- Initial Execution
 if AUTO_MATCH_ENABLED then attemptJoinMatch() end
 if AUTO_AIM_ENABLED then
     if AUTO_AIM_MODE == "Silent" then UIHandlers.UpdateSilentAim(true) UIHandlers.UpdateAimLock(false)
